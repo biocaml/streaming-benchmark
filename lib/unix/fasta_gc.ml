@@ -99,24 +99,28 @@ let sd x =
   let mu = mean x in
   sqrt (mean (Array.map x ~f:(fun x -> (x -. mu) ** 2.)))
 
-let time f x =
+let time ~n f x =
   let repetition _ =
     let t1 = Time.now () in
     f x ;
     let t2 = Time.now () in
     Time.Span.to_float (Time.diff t2 t1)
   in
-  let repetitions = Array.init 10 repetition in
+  let repetitions = Array.init n repetition in
   mean repetitions,
   sd repetitions
 
 let main fn () =
+  let n = 10 in
   let compute (name, f) =
-    let mu, sigma = time f fn in
+    let mu, sigma = time ~n f fn in
     name, mu, sigma
   in
   let render (name, mu, sigma) =
-    printf "%s\t%.3g\t%.3g\n%!" name mu sigma
+    let delta = sigma *. 1.96 /. sqrt (float n) in
+    (* improper CI, should use student's law *)
+    let lo, hi = mu -. delta, mu +. delta in
+    printf "%s\t%.3g [%.3g, %.3g]\n%!" name mu lo hi
   in
   let bench = [
     "biocaml-unix0", biocaml_unix0 ;
