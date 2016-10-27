@@ -29,7 +29,7 @@ let fold_file fn ~init ~f =
       loop init
     )
 
-let biocaml_base fn =
+let biocaml_base0 fn =
   let open Biocaml_base.Std in
   fold_file fn
     ~init:((0, 0), Fasta.Parser0.initial_state ())
@@ -40,6 +40,24 @@ let biocaml_base fn =
               function
               | `Comment _ | `Description _ | `Empty_line -> accu
               | `Partial_sequence s -> gc_accu accu s
+            )
+          in
+          accu', state'
+
+        | Error _ -> failwith "Biocaml_base.Fasta.Parser0 error"
+      )
+  |> fst
+  |> print_result
+
+let biocaml_base fn =
+  let open Biocaml_base.Std in
+  fold_file fn
+    ~init:((0, 0), Fasta.Parser.initial_state ())
+    ~f:(fun (accu, state) input ->
+        match Fasta.Parser.step state input with
+        | Ok (state', items) ->
+          let accu' = List.fold items ~init:accu ~f:(fun accu item ->
+              gc_accu accu item.Fasta.sequence
             )
           in
           accu', state'
@@ -103,6 +121,7 @@ let main fn () =
   let bench = [
     "biocaml-unix0", biocaml_unix0 ;
     "biocaml-unix", biocaml_unix ;
+    "biocaml-base0", biocaml_base0 ;
     "biocaml-base", biocaml_base ;
   ]
   in
