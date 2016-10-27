@@ -8,6 +8,7 @@ let () =
       group ~summary:"Streaming benchmark" [
         ("bamcount", Bam_count_alignments.command);
         ("samcount", Sam_count_alignments.command);
+        ("fagc", Fasta_gc.command);
       ] in
     run ~version:About.version whole_thing
   )
