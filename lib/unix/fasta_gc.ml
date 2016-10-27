@@ -60,17 +60,46 @@ let biocaml_unix fn =
   |> ok_exn
   |> print_result
 
-let main mode fn () = match mode with
-  | "biocaml-unix" -> biocaml_unix fn
-  | "biocaml-base" -> biocaml_base fn
-  | _ -> failwithf "Unknown mode %s" mode ()
+let mean x =
+  Array.fold x ~init:0. ~f:( +. )
+  /. float (Array.length x)
+
+let sd x =
+  let mu = mean x in
+  sqrt (mean (Array.map x ~f:(fun x -> (x -. mu) ** 2.)))
+
+let time f x =
+  let repetition _ =
+    let t1 = Time.now () in
+    f x ;
+    let t2 = Time.now () in
+    Time.Span.to_float (Time.diff t2 t1)
+  in
+  let repetitions = Array.init 10 repetition in
+  mean repetitions,
+  sd repetitions
+
+let main fn () =
+  let compute (name, f) =
+    let mu, sigma = time f fn in
+    name, mu, sigma
+  in
+  let render (name, mu, sigma) =
+    printf "%s\t%.3g\t%.3g\n%!" name mu sigma
+  in
+  let bench = [
+    "biocaml-unix", biocaml_unix ;
+    "biocaml-base", biocaml_base ;
+  ]
+  in
+  List.map bench ~f:compute
+  |> List.iter ~f:render
 
 let command =
   let open Command in
   basic ~summary:"Computes GC in FASTA file"
     Spec.(
       step (fun k mode fn -> k mode fn)
-      +> flag "mode" (required string) ~doc:"{biocaml-unix} Choose implementation"
       +> anon ("INPUT-FILE" %: string)
     )
     main
