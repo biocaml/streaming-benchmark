@@ -49,6 +49,19 @@ let biocaml_base fn =
   |> fst
   |> print_result
 
+let biocaml_unix0 fn =
+  let open Biocaml_unix.Std in
+  In_channel.with_file fn ~f:(fun ic ->
+      Fasta.read0 ic
+      |> Stream.Result.fold' ~init:(0,0) ~f:(fun accu item ->
+          match item with
+          | `Comment _ | `Description _ | `Empty_line -> accu
+          | `Partial_sequence s -> gc_accu accu s
+        )
+      |> ok_exn
+      |> print_result
+    )
+
 
 let biocaml_unix fn =
   let open Biocaml_unix.Std in
@@ -88,6 +101,7 @@ let main fn () =
     printf "%s\t%.3g\t%.3g\n%!" name mu sigma
   in
   let bench = [
+    "biocaml-unix0", biocaml_unix0 ;
     "biocaml-unix", biocaml_unix ;
     "biocaml-base", biocaml_base ;
   ]
