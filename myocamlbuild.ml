@@ -35,7 +35,13 @@ let app ?internal_deps name : Project.item =
     ~file:(sprintf "app/%s.ml" name)
     ?internal_deps
 
-let unix = lib "unix" ~findlib_deps:["biocaml.unix" ; "containers" ; "core_bench" ; "sosa"]
+let unix = lib "unix" ~findlib_deps:[
+    "biocaml.base" ;
+    "biocaml.unix" ;
+    "containers" ;
+    "core_bench" ;
+    "sosa"
+  ]
 
 let streaming_benchmark = app "streaming_benchmark"
     ~internal_deps:[unix]
