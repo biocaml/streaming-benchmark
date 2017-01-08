@@ -47,7 +47,6 @@ let biocaml_base0 fn =
         | Error _ -> failwith "Biocaml_base.Fasta.Parser0 error"
       )
   |> fst
-  |> print_result
 
 let biocaml_base fn =
   let open Biocaml_base.Std in
@@ -65,7 +64,6 @@ let biocaml_base fn =
         | Error _ -> failwith "Biocaml_base.Fasta.Parser0 error"
       )
   |> fst
-  |> print_result
 
 let biocaml_unix0 fn =
   let open Biocaml_unix.Std in
@@ -77,7 +75,6 @@ let biocaml_unix0 fn =
           | `Partial_sequence s -> gc_accu accu s
         )
       |> ok_exn
-      |> print_result
     )
 
 
@@ -89,7 +86,6 @@ let biocaml_unix fn =
         )
     )
   |> ok_exn
-  |> print_result
 
 let mean x =
   Array.fold x ~init:0. ~f:( +. )
@@ -99,28 +95,29 @@ let sd x =
   let mu = mean x in
   sqrt (mean (Array.map x ~f:(fun x -> (x -. mu) ** 2.)))
 
-let time ~n f x =
+let time ~verbose ~n f x =
   let repetition _ =
     let t1 = Time.now () in
-    f x ;
+    let r = f x in
     let t2 = Time.now () in
+    if verbose then print_result r ;
     Time.Span.to_float (Time.diff t2 t1)
   in
-  let repetitions = Array.init n repetition in
+  let repetitions = Array.init n ~f:repetition in
   mean repetitions,
   sd repetitions
 
-let main fn () =
+let main verbose fn () =
   let n = 10 in
   let compute (name, f) =
-    let mu, sigma = time ~n f fn in
+    let mu, sigma = time ~verbose ~n f fn in
     name, mu, sigma
   in
   let render (name, mu, sigma) =
     let delta = sigma *. 1.96 /. sqrt (float n) in
     (* improper CI, should use student's law *)
     let lo, hi = mu -. delta, mu +. delta in
-    printf "%s\t%.3g [%.3g, %.3g]\n%!" name mu lo hi
+    printf "%s\t%.3f [%.3f, %.3f]\n%!" name mu lo hi
   in
   let bench = [
     "biocaml-unix0", biocaml_unix0 ;
@@ -137,6 +134,7 @@ let command =
   basic ~summary:"Computes GC in FASTA file"
     Spec.(
       step (fun k mode fn -> k mode fn)
+      +> flag "--verbose" no_arg ~doc:" prints more stuff"
       +> anon ("INPUT-FILE" %: string)
     )
     main
