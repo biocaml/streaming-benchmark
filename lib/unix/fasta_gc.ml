@@ -95,29 +95,60 @@ let sd x =
   let mu = mean x in
   sqrt (mean (Array.map x ~f:(fun x -> (x -. mu) ** 2.)))
 
-let time ~verbose ~n f x =
+type 'a perf = {
+  time : 'a ;
+  minor_words : 'a ;
+  promoted_words : 'a ;
+  major_words : 'a ;
+}
+
+let bench ~verbose ~n f x =
   let repetition _ =
+    Gc.full_major () ;
+    let stats1 = Gc.quick_stat () in
     let t1 = Time.now () in
     let r = f x in
     let t2 = Time.now () in
+    let stats2 = Gc.quick_stat () in
     if verbose then print_result r ;
-    Time.Span.to_float (Time.diff t2 t1)
+    {
+      time = Time.Span.to_float (Time.diff t2 t1) ;
+      minor_words = stats2.Gc.Stat.minor_words -. stats1.Gc.Stat.minor_words ;
+      promoted_words = stats2.Gc.Stat.promoted_words -. stats1.Gc.Stat.promoted_words ;
+      major_words = stats2.Gc.Stat.major_words -. stats1.Gc.Stat.major_words ;
+    }
   in
   let repetitions = Array.init n ~f:repetition in
-  mean repetitions,
-  sd repetitions
+  let time = Array.map repetitions ~f:(fun x -> x.time) in
+  let minor_words = Array.map repetitions ~f:(fun x -> x.minor_words) in
+  let promoted_words = Array.map repetitions ~f:(fun x -> x.promoted_words) in
+  let major_words = Array.map repetitions ~f:(fun x -> x.major_words) in
+  {
+    time = mean time, sd time ;
+    minor_words = mean minor_words, sd minor_words ;
+    promoted_words = mean promoted_words, sd promoted_words ;
+    major_words = mean major_words, sd major_words ;
+  }
 
 let main verbose fn () =
   let n = 10 in
   let compute (name, f) =
-    let mu, sigma = time ~verbose ~n f fn in
-    name, mu, sigma
+    let res = bench ~verbose ~n f fn in
+    name, res.time, res.minor_words, res.promoted_words, res.major_words
   in
-  let render (name, mu, sigma) =
+  let render_obs (mu, sigma) =
     let delta = sigma *. 1.96 /. sqrt (float n) in
     (* improper CI, should use student's law *)
     let lo, hi = mu -. delta, mu +. delta in
-    printf "%s\t%.3f [%.3f, %.3f]\n%!" name mu lo hi
+    sprintf "%.3f [%.3f, %.3f]" mu lo hi
+  in
+  let render (name, time, minor_words, promoted_words, major_words) =
+    printf "%s\t%s\t%s\t%s\t%s\n%!"
+      name
+      (render_obs time)
+      (render_obs minor_words)
+      (render_obs promoted_words)
+      (render_obs major_words)
   in
   let bench = [
     "biocaml-unix0", biocaml_unix0 ;
