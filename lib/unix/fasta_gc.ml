@@ -87,6 +87,37 @@ let biocaml_unix fn =
     )
   |> ok_exn
 
+
+let angstrom_parser =
+  let open Angstrom in
+  let not_eol c = c <> '\n' in
+  let rec item acc =
+    char '>'
+    *> skip_while not_eol
+    *> sequence acc
+
+  and sequence acc =
+    take_while not_eol >>= fun s ->
+    end_of_line *>
+    peek_char >>= function
+    | None -> return acc
+    | Some '>' -> item acc
+    | Some c -> sequence (gc_accu acc s)
+  in
+  item (0, 0)
+
+let angstrom fn =
+  In_channel.with_file fn ~f:(fun ic ->
+      (* Angstrom_unix.parse (count_chars ()) ic *)
+      Angstrom_unix.parse angstrom_parser ic
+    )
+  |> snd
+  |> (
+    function
+      Pervasives.Ok r -> r
+    | Pervasives.Error e -> failwith e
+  )
+
 let mean x =
   Array.fold x ~init:0. ~f:( +. )
   /. float (Array.length x)
@@ -151,6 +182,7 @@ let main verbose fn () =
       (render_obs major_words)
   in
   let bench = [
+    "angstrom", angstrom ;
     "biocaml-unix0", biocaml_unix0 ;
     "biocaml-unix", biocaml_unix ;
     "biocaml-base0", biocaml_base0 ;
