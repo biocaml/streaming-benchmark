@@ -12,7 +12,7 @@ let short_paths = ()
 let thread = ()
 let w = "A-4-33-41-42-44-45-48"
 
-let lib ?findlib_deps ?internal_deps ?build_if ?ml_files lib_name
+let lib ?findlib_deps ?internal_deps ?ml_files lib_name
   : Project.item
   =
   Project.lib (sprintf "%s_%s" project_name lib_name)
@@ -36,6 +36,7 @@ let app ?internal_deps name : Project.item =
     ?internal_deps
 
 let unix = lib "unix" ~findlib_deps:[
+    "angstrom.unix" ;
     "biocaml.base" ;
     "biocaml.unix" ;
     "containers" ;
@@ -46,50 +47,8 @@ let unix = lib "unix" ~findlib_deps:[
 let streaming_benchmark = app "streaming_benchmark"
     ~internal_deps:[unix]
 
-let items =
-  [
-    unix ;
-    streaming_benchmark ;
-  ]
-
-
-;;
 let () =
-  let open Solvuu_build.Std.Project in
-
-  (* Compute graph to check for cycles and other errors. *)
-  ignore (Graph.of_list items);
-
-  let libs = filter_libs items in
-  let apps = filter_apps items in
-
-  Ocamlbuild_plugin.dispatch @@ function
-  | Ocamlbuild_plugin.After_rules -> (
-      Ocamlbuild_plugin.clear_rules();
-
-      Tools.m4_rule ()
-        ~_D:[
-          "GIT_COMMIT", Some (match Tools.git_last_commit() with
-            | None -> "None"
-            | Some x -> sprintf "Some \"%s\"" x
-          );
-          "VERSION", Some version;
-        ];
-
-      List.iter libs ~f:build_lib;
-      List.iter apps ~f:build_app;
-
-      build_static_file ".merlin" (merlin_file items);
-      build_static_file ".ocamlinit"
-        (ocamlinit_file items);
-      build_static_file "project.mk"
-        (makefile items ~project_name);
-      (
-        match meta_file ~version libs with
-        | None -> ()
-        | Some x -> Findlib.build_meta_file x
-      );
-      build_static_file (sprintf "%s.install" project_name)
-        (install_file items);
-    )
-  | _ -> ()
+  Project.basic1
+    ~project_name
+    ~version
+    [ unix ; streaming_benchmark ]
