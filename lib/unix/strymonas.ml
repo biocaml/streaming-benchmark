@@ -21,15 +21,17 @@ module Cruanes_sequence_impl = struct
 end
 
 module Cseq_impl = struct
+  module S = Cseq
+
   let int_sum () =
-    Cseq.of_list int_list
-    |> Cseq.fold_left ( + ) 0
+    S.of_list int_list
+    |> S.fold_left ( + ) 0
     |> ignore
 
   let int_sumOfSquares () =
-    Cseq.of_list int_list
-    |> Cseq.map square
-    |> Cseq.fold_left ( + ) 0
+    S.of_list int_list
+    |> S.map square
+    |> S.fold_left ( + ) 0
     |> ignore
 end
 
@@ -49,16 +51,16 @@ module Enum_impl = struct
 end
 
 module Gen_impl = struct
-  open Gen
+  module S = Gen
 
   let int_sum () =
-    Gen.of_list int_list
-    |> Gen.fold ( + ) 0
+    S.of_list int_list
+    |> S.fold ( + ) 0
 
   let int_sumOfSquares () =
-    Gen.of_list int_list
-    |> Gen.map square
-    |> Gen.fold ( + ) 0
+    S.of_list int_list
+    |> S.map square
+    |> S.fold ( + ) 0
 end
 
 module Imp_impl = struct
@@ -101,30 +103,32 @@ module Pipes_impl = struct
 end
 
 module Sequence_impl = struct
+  module S = Sequence
+
   let int_sum () =
-    Sequence.of_list int_list
-    |> Sequence.fold ~init:0 ~f:( + )
+    S.of_list int_list
+    |> S.fold ~init:0 ~f:( + )
     |> ignore
 
   let int_sumOfSquares () =
-    Sequence.of_list int_list
-    |> Sequence.map ~f:square
-    |> Sequence.fold ~init:0 ~f:( + )
+    S.of_list int_list
+    |> S.map ~f:square
+    |> S.fold ~init:0 ~f:( + )
     |> ignore
 end
 
 module Stream_impl = struct
-  open CFStream
+  module S = CFStream.Stream
 
   let int_sum () =
-    Stream.of_list int_list
-    |> Stream.fold ~init:0 ~f:( + )
+    S.of_list int_list
+    |> S.fold ~init:0 ~f:( + )
     |> ignore
 
   let int_sumOfSquares () =
-    Stream.of_list int_list
-    |> Stream.map ~f:square
-    |> Stream.fold ~init:0 ~f:( + )
+    S.of_list int_list
+    |> S.map ~f:square
+    |> S.fold ~init:0 ~f:( + )
     |> ignore
 end
 
