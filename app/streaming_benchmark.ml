@@ -7,8 +7,9 @@ let () =
     let whole_thing =
       group ~summary:"Streaming benchmark" [
         ("bamcount", Bam_count_alignments.command);
-        ("samcount", Sam_count_alignments.command);
         ("fagc", Fasta_gc.command);
+        ("samcount", Sam_count_alignments.command);
+        ("strymonas", Strymonas.command);
       ] in
     run ~version:About.version whole_thing
   )

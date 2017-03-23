@@ -17,7 +17,7 @@ let lib ?findlib_deps ?internal_deps ?ml_files lib_name
   =
   Project.lib (sprintf "%s_%s" project_name lib_name)
     ~annot ~bin_annot ~g ~short_paths ~thread ~w
-    ~pkg:(sprintf "%s.%s" project_name lib_name)
+    ~install:(`Findlib (sprintf "%s.%s" project_name lib_name))
     ~dir:(sprintf "lib/%s" lib_name)
     ~style:(`Pack (sprintf "%s_%s" project_name lib_name))
     ~build_plugin:false (* solvuu-build doesn't implement plugin
@@ -37,10 +37,14 @@ let app ?internal_deps name : Project.item =
 
 let unix = lib "unix" ~findlib_deps:[
     "angstrom.unix" ;
+    "batteries" ;
     "biocaml.base" ;
     "biocaml.unix" ;
     "containers" ;
     "core_bench" ;
+    "gen" ;
+    "pipes.unix" ;
+    "sequence" ;
     "sosa"
   ]
 
