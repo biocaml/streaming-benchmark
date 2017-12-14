@@ -1,5 +1,5 @@
-open Core.Std
-open Biocaml_unix.Std
+open Core
+open Biocaml_unix
 module Result = Biocaml_unix.Biocaml_result
 open CFStream
 
@@ -511,17 +511,17 @@ module Transform = struct
   let raw_to_item () :
       (raw_item, (item, [> Error.raw_to_item]) Result.t) Tfxm.t =
     let name = "sam_item_parser" in
-    let raw_queue = Dequeue.create () in
+    let raw_queue = Deque.create () in
     let raw_items_count = ref 0 in
     let refseq_line, refseq_end = reference_sequence_aggregator () in
     let header_finished = ref false in
     let ref_dictionary = ref None in
     let rec next stopped =
-      if Dequeue.is_empty raw_queue
+      if Deque.is_empty raw_queue
       then (if stopped then `end_of_stream else `not_ready)
       else begin
         incr raw_items_count;
-        begin match Dequeue.dequeue_exn raw_queue `front with
+        begin match Deque.dequeue_exn raw_queue `front with
         | `comment c when !header_finished ->
           `output (Error (`comment_after_end_of_header (!raw_items_count, c)))
         | `header c when !header_finished ->
@@ -544,7 +544,7 @@ module Transform = struct
                           |> (fun x -> `output x)
           ) else begin
             header_finished := true;
-            Dequeue.enqueue raw_queue `front (`alignment a);
+            Deque.enqueue raw_queue `front (`alignment a);
             begin match refseq_end () with
             | Ok rd ->
               ref_dictionary := Some rd;
@@ -555,7 +555,7 @@ module Transform = struct
         end
       end
     in
-    Tfxm.make ~name ~feed:(Dequeue.enqueue raw_queue `back) ()
+    Tfxm.make ~name ~feed:(Deque.enqueue raw_queue `back) ()
       ~next
 
   let downgrade_alignment al =
@@ -623,19 +623,19 @@ module Transform = struct
 
   let item_to_raw () =
     let name = "sam_item_to_raw" in
-    let raw_queue = Dequeue.create () in
+    let raw_queue = Deque.create () in
     let raw_items_count = ref 0 in
     let reference_sequence_dictionary = ref [| |] in
     let reference_sequence_dictionary_to_output = ref 0 in
     let rec next stopped =
       begin match !reference_sequence_dictionary_to_output with
       | 0 ->
-        begin match Dequeue.is_empty raw_queue with
+        begin match Deque.is_empty raw_queue with
         | true when stopped -> `end_of_stream
         | true (* when not stopped *) -> `not_ready
         | false ->
           incr raw_items_count;
-          begin match Dequeue.dequeue_exn raw_queue `front with
+          begin match Deque.dequeue_exn raw_queue `front with
           | `comment c ->
             `output (Ok (`comment c))
           | `header_line (version, sorting, rest) ->
@@ -669,7 +669,7 @@ module Transform = struct
         `output (Ok (`header ("SQ", reference_sequence_to_header o)))
       end
     in
-    Tfxm.make ~name ~feed:(Dequeue.enqueue raw_queue `back) ()
+    Tfxm.make ~name ~feed:(Deque.enqueue raw_queue `back) ()
       ~next
 
 

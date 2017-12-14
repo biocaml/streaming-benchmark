@@ -1,6 +1,6 @@
-open Core.Std
+open Core
 open CFStream
-open Biocaml_unix.Std
+open Biocaml_unix
 
 let transform_count fn =
   let open Sam.Flags in

@@ -1,4 +1,4 @@
-open Core.Std
+open Core
 open CFStream
 
 let gc = String.count ~f:(function
@@ -18,7 +18,7 @@ let fold_file fn ~init ~f =
   let buf = String.create n in
   In_channel.with_file fn ~f:(fun ic ->
       let rec loop accu =
-        match input ic buf 0 n with
+        match In_channel.input ic buf 0 n with
         | 0 -> f accu None
         | len ->
           Some (String.sub buf ~pos:0 ~len)
@@ -30,7 +30,7 @@ let fold_file fn ~init ~f =
     )
 
 let biocaml_base0 fn =
-  let open Biocaml_base.Std in
+  let open Biocaml_base in
   fold_file fn
     ~init:((0, 0), Fasta.Parser0.initial_state ())
     ~f:(fun (accu, state) input ->
@@ -49,7 +49,7 @@ let biocaml_base0 fn =
   |> fst
 
 let biocaml_base fn =
-  let open Biocaml_base.Std in
+  let open Biocaml_base in
   fold_file fn
     ~init:((0, 0), Fasta.Parser.initial_state ())
     ~f:(fun (accu, state) input ->
@@ -66,7 +66,7 @@ let biocaml_base fn =
   |> fst
 
 let biocaml_unix0 fn =
-  let open Biocaml_unix.Std in
+  let open Biocaml_unix in
   In_channel.with_file fn ~f:(fun ic ->
       Fasta.read0 ic
       |> Stream.Result.fold' ~init:(0,0) ~f:(fun accu item ->
@@ -79,7 +79,7 @@ let biocaml_unix0 fn =
 
 
 let biocaml_unix fn =
-  let open Biocaml_unix.Std in
+  let open Biocaml_unix in
   Fasta.with_file fn ~f:(fun _ items ->
       Stream.Result.fold' items ~init:(0,0) ~f:(fun accu item ->
           gc_accu accu item.Fasta.sequence
@@ -143,7 +143,7 @@ let bench ~verbose ~n f x =
     let stats2 = Gc.quick_stat () in
     if verbose then print_result r ;
     {
-      time = Time.Span.to_float (Time.diff t2 t1) ;
+      time = Time.Span.to_proportional_float (Time.diff t2 t1) ;
       minor_words = stats2.Gc.Stat.minor_words -. stats1.Gc.Stat.minor_words ;
       promoted_words = stats2.Gc.Stat.promoted_words -. stats1.Gc.Stat.promoted_words ;
       major_words = stats2.Gc.Stat.major_words -. stats1.Gc.Stat.major_words ;

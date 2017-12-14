@@ -1,0 +1,10 @@
+(jbuild_version 1)
+
+(library
+ ((name streaming_benchmark_unix)
+  (public_name streaming_benchmark.unix)
+  (libraries (angstrom.unix batteries biocaml.base biocaml.unix
+              containers core_bench gen pipes.unix sequence sosa))
+  (preprocess (pps (ppx_sexp_conv)))
+	      
+  ))

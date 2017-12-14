@@ -5,7 +5,7 @@ This module provides parsing from [string] buffers to [raw_item]s
 (minimal parsing), and conversion from [raw_item]s to [Sam.item]s
 (higher-level constructs).
 *)
-open Core.Std
+open Core
 open Biocaml_unix
 open Transform_sam
 
@@ -119,38 +119,38 @@ end
 (** {2 [In_channel] Functions} *)
 
 exception Error of [ `bam of Error.t
-                   | `unzip of Biocaml_zip.Error.unzip ]
+                   | `unzip of Zip.Error.unzip ]
 (** The exception thrown by [*_exn] functions in this module. *)
 
 val in_channel_to_raw_item_stream :
   ?zlib_buffer_size:int ->
   ?buffer_size:int ->
-  in_channel ->
+  In_channel.t ->
   (raw_item,
    [> `bam of [> Error.raw_bam ]
-   | `unzip of [> Biocaml_zip.Error.unzip ] ])
+   | `unzip of [> Zip.Error.unzip ] ])
     Result.t Stream.t
 (** Create a stream of raw_item results from an input-channel. *)
 
 val in_channel_to_raw_item_stream_exn :
   ?zlib_buffer_size:int ->
   ?buffer_size:int ->
-  in_channel -> raw_item Stream.t
+  In_channel.t -> raw_item Stream.t
 (** Create a stream of raw_items from an input-channel (any call to
     [Stream.next] may throw an [Error _] exception). *)
 
 val in_channel_to_item_stream :
   ?zlib_buffer_size:int ->
   ?buffer_size:int ->
-  in_channel ->
+  In_channel.t ->
   (item,
    [> `bam of [> Error.t ]
-   | `unzip of [> Biocaml_zip.Error.unzip ] ])
+   | `unzip of [> Zip.Error.unzip ] ])
     Result.t Stream.t
 (** Create a stream of full [Sam.item] results from an input-channel. *)
 
 val in_channel_to_item_stream_exn :
-  ?zlib_buffer_size:int -> ?buffer_size:int -> in_channel ->
+  ?zlib_buffer_size:int -> ?buffer_size:int -> In_channel.t ->
   item Stream.t
 (** Create a stream of [Sam.item]s from an input-channel (any call to
     [Stream.next] may throw an [Error _] exception). *)
@@ -171,7 +171,7 @@ module Transform: sig
     ?zlib_buffer_size:int ->
     unit ->
     (string,
-     (raw_item, [> `unzip of Biocaml_zip.Error.unzip
+     (raw_item, [> `unzip of Zip.Error.unzip
                 | `bam of Error.raw_bam ] )
        Result.t)
       Tfxm.t

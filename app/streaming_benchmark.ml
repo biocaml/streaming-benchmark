@@ -1,5 +1,5 @@
-open Core.Std
-open Biocaml_unix.Std
+open Core
+open Biocaml_unix
 open Streaming_benchmark_unix
 
 let () =
@@ -11,5 +11,5 @@ let () =
         ("samcount", Sam_count_alignments.command);
         ("strymonas", Strymonas.command);
       ] in
-    run ~version:About.version whole_thing
+    run whole_thing
   )

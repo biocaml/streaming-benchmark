@@ -1,9 +1,8 @@
-open Core.Std
+open Core
 open Biocaml_unix
 module Result = Biocaml_unix.Biocaml_result
 open CFStream
 module Sam = Transform_sam
-module Zip = Biocaml_zip
 
 type raw_alignment = {
   qname : string;
@@ -127,6 +126,9 @@ module Transform = struct
     >>= fun l_ref ->
     Ok (4 + l_name + 4, name, l_ref)
 
+exception Failwith_no
+exception Failwith_error
+
   let parse_reference_information buf nb =
     let bytes_read = ref 0 in
     let error = ref None in
@@ -137,12 +139,12 @@ module Transform = struct
           | Ok (read, name, lref) ->
             bytes_read := !bytes_read + read;
             (name, lref)
-          | Error `no -> failwith "NO"
-          | Error other -> error := Some other; failwith "ERROR")) in
+          | Error `no -> raise Failwith_no
+          | Error other -> error := Some other; raise Failwith_error)) in
       `reference_information (refinfo, !bytes_read)
     with
-    | Failure "NO" -> `no
-    | Failure "ERROR" -> `error Option.(value_exn !error)
+    | Failwith_no -> `no
+    | Failwith_error -> `error Option.(value_exn !error)
 
 
 
@@ -478,7 +480,7 @@ module Transform = struct
   let raw_to_item () :
       (raw_item, (Sam.item, _) Result.t) Tfxm.t=
     let name = "bam_item_parser" in
-    let raw_queue = Dequeue.create () in
+    let raw_queue = Deque.create () in
     let raw_items_count = ref 0 in
     let header_items = ref [] in
     let reference_information = ref [| |] in
@@ -487,12 +489,12 @@ module Transform = struct
       begin match !header_items with
       | h :: t -> header_items := t; `output (Ok h)
       | [] ->
-        begin match Dequeue.is_empty raw_queue, stopped with
+        begin match Deque.is_empty raw_queue, stopped with
         | true, true ->`end_of_stream
         | true, false -> `not_ready
         | false, _ ->
           incr raw_items_count;
-          begin match Dequeue.dequeue_exn raw_queue `front with
+          begin match Deque.dequeue_exn raw_queue `front with
           | `header s ->
             begin match parse_sam_header s with
             | Ok h -> header_items := h; next stopped
@@ -505,7 +507,7 @@ module Transform = struct
           | `alignment a ->
             if !first_alignment then (
               first_alignment := false;
-              Dequeue.enqueue raw_queue `front (`alignment a);
+              Deque.enqueue raw_queue `front (`alignment a);
               `output (Ok (`reference_sequence_dictionary !reference_information))
             ) else (
               expand_alignment !reference_information a |> (fun x -> `output x)
@@ -514,7 +516,7 @@ module Transform = struct
         end
       end
     in
-    Tfxm.make ~name ~feed:(Dequeue.enqueue raw_queue `back) ()
+    Tfxm.make ~name ~feed:(Deque.enqueue raw_queue `back) ()
       ~next
 
   let downgrade_alignement al ref_dict =
@@ -565,15 +567,15 @@ module Transform = struct
         Binary_packing.pack_signed_32 ~byte_order:`Little_endian ~buf ~pos i32 in
       let open Int32 in
       Array.iteri al.S.cigar_operations ~f:(fun idx -> function
-      | `M  i -> bit_or 0l (of_int_exn (i lsl 4)) |> write idx
-      | `I  i -> bit_or 1l (of_int_exn (i lsl 4)) |> write idx
-      | `D  i -> bit_or 2l (of_int_exn (i lsl 4)) |> write idx
-      | `N  i -> bit_or 3l (of_int_exn (i lsl 4)) |> write idx
-      | `S  i -> bit_or 4l (of_int_exn (i lsl 4)) |> write idx
-      | `H  i -> bit_or 5l (of_int_exn (i lsl 4)) |> write idx
-      | `P  i -> bit_or 6l (of_int_exn (i lsl 4)) |> write idx
-      | `Eq i -> bit_or 7l (of_int_exn (i lsl 4)) |> write idx
-      | `X  i -> bit_or 8l (of_int_exn (i lsl 4)) |> write idx);
+      | `M  i -> bit_or 0l (of_int_exn Int.(i lsl 4)) |> write idx
+      | `I  i -> bit_or 1l (of_int_exn Int.(i lsl 4)) |> write idx
+      | `D  i -> bit_or 2l (of_int_exn Int.(i lsl 4)) |> write idx
+      | `N  i -> bit_or 3l (of_int_exn Int.(i lsl 4)) |> write idx
+      | `S  i -> bit_or 4l (of_int_exn Int.(i lsl 4)) |> write idx
+      | `H  i -> bit_or 5l (of_int_exn Int.(i lsl 4)) |> write idx
+      | `P  i -> bit_or 6l (of_int_exn Int.(i lsl 4)) |> write idx
+      | `Eq i -> bit_or 7l (of_int_exn Int.(i lsl 4)) |> write idx
+      | `X  i -> bit_or 8l (of_int_exn Int.(i lsl 4)) |> write idx);
       buf
     in
     begin match al.S.next_reference_sequence with
@@ -636,18 +638,18 @@ module Transform = struct
   let item_to_raw () :
       (Sam.item, (raw_item, _) Result.t) Tfxm.t =
     let name = "bam_item_downgrader" in
-    let queue = Dequeue.create () in
+    let queue = Deque.create () in
     let items_count = ref 0 in
     let ref_dict = ref [| |] in
     let ref_dict_done = ref false in
     let header = Buffer.create 256 in
     let rec next stopped =
-      begin match Dequeue.is_empty queue, stopped with
+      begin match Deque.is_empty queue, stopped with
       | true, true ->`end_of_stream
       | true, false -> `not_ready
       | false, _ ->
         incr items_count;
-        begin match Dequeue.dequeue_exn queue `front with
+        begin match Deque.dequeue_exn queue `front with
         | `comment c ->
           Buffer.add_string header "@CO\t";
           Buffer.add_string header c;
@@ -682,7 +684,7 @@ module Transform = struct
           if not !ref_dict_done
           then begin
             ref_dict_done := true;
-            Dequeue.enqueue queue `front (`alignment al);
+            Deque.enqueue queue `front (`alignment al);
             `output (Ok (`reference_information (Array.map !ref_dict ~f:(fun rs ->
               let open Sam in
               (rs.ref_name, rs.ref_length)))))
@@ -695,7 +697,7 @@ module Transform = struct
         end
       end
     in
-    Tfxm.make ~name ~feed:(Dequeue.enqueue queue `back) ()
+    Tfxm.make ~name ~feed:(Deque.enqueue queue `back) ()
       ~next
 
   let uncompressed_bam_printer () : (raw_item, string) Tfxm.t =
